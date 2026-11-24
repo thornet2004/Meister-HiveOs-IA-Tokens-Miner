@@ -1,5 +1,7 @@
 # Pôr o «minerador de tokens» numa rig nova (HiveOS)
 
+Transforma uma rig de mineração num servidor de modelos de IA para a **[MeisterCode](https://github.com/thornet2004/Meister-Code)**, uma aplicação de secretária para Windows com conversa, geração de imagem, vídeo e áudio e agente de programação. Na app, a rig liga-se em Configurações → «Onde correm os modelos» → «Provedor local». Também se pode usar sem a app: a rig serve uma página de conversa em `/chat` e uma API compatível com a da OpenAI.
+
 Serve para uma rig com HiveOS e placas NVIDIA que nunca teve este sistema. Depois do pacote estar na rig, **tudo o resto é automático** no primeiro arranque: instala o motor, descarrega e confere o modelo, reparte-o pelas placas, cria a chave de dono e liga o porteiro.
 
 > Estado: a versão 0.8 (instalação e plano automáticos) foi ensaiada no PC (contas do plano, sintaxe, pacote). **Ainda não correu numa rig limpa.** A primeira instalação a sério é o ensaio que falta.
@@ -65,7 +67,7 @@ Aplica o flight sheet e acompanha o registo do minerador no painel. Por ordem:
 ```
 cat /home/user/meister-rig/api_key
 ```
-Com ela entra-se em `http://<endereço da rig>:8080/admin` (criar chaves para outras pessoas) e em `http://<endereço da rig>:8080/chat`. Na app MeisterCode: Configurações → «Provedor local» → endereço `http://<endereço da rig>:8080` e a chave.
+Com ela entra-se em `http://<endereço da rig>:8080/admin` (criar chaves para outras pessoas) e em `http://<endereço da rig>:8080/chat`. Na app [MeisterCode](https://github.com/thornet2004/Meister-Code): Configurações → «Provedor local» → endereço `http://<endereço da rig>:8080` e a chave.
 
 ## Como o plano automático faz as contas
 Vai juntando placas pela ordem até a memória chegar para o modelo, com folga: 1,2 GB por placa e 2 GB por servidor para um contexto de 16 384; havendo mais 3 GB, o contexto sobe para 32 768. As placas que sobram formam outro servidor com o mesmo modelo, se chegarem. É prudente de propósito; quem quiser espremer a rig (64k de contexto, dois modelos diferentes) escreve linhas `SERVERn=` à mão, como em `flight-sheet-extra.txt`.
