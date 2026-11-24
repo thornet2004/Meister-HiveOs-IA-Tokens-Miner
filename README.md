@@ -18,7 +18,7 @@ Fica em `pacote/meisterllm-0.8.tar.gz` (não vai para o git). Não leva chaves, 
 ## 2. Pô-lo na rig — um de dois caminhos
 **A. Pelo painel do Hive («Installation URL») — o mais simples.** O Hive descarrega e desempacota sozinho; não é preciso entrar na rig. O endereço é o do ficheiro `meisterllm-0.8.tar.gz` no repositório público:
 ```
-https://github.com/<conta>/<repositório>/raw/main/meisterllm-0.8.tar.gz
+https://github.com/thornet2004/Meister-HiveOs-IA-Tokens-Miner/raw/main/meisterllm-0.8.tar.gz
 ```
 (um repositório privado não serve: a rig não consegue descarregar sem sessão iniciada).
 
