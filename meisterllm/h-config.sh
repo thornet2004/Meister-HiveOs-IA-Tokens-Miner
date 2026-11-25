@@ -19,6 +19,11 @@
 	echo "RESET_CLOCKS=1"                     # repõe os relógios das placas (o overclock de mineração trava a geração)
 	echo "CACHE_RAM=512"                      # MiB de RAM que cada servidor pode gastar a guardar pedidos antigos (o motor traz 8192: com 8 GB de RAM bloqueia a rig)
 	echo "CHECKPOINTS=4"                      # cópias do contexto guardadas por servidor (o motor traz 32)
+	echo "SLOTS="                             # MODO TROCA: grupos de placas, um modelo por grupo (ex.: «0,1,2 3,4,5»). Vazio = modo antigo (servidores sempre ligados).
+	echo "QUENTES="                           # MODO TROCA: nomes dos modelos a manter quentes/pré-carregados (ex.: «qwen3.8-27b qwen3-coder-30b»).
+	echo "KEEPALIVE=600"                      # MODO TROCA: segundos parado antes de descarregar um modelo não-quente (o próximo pedido recarrega-o).
+	echo "VAGA_FIXA="                         # MODO TROCA: modelos presos a uma vaga (ex.: «qwen3-coder-30b:1») — p.ex. um contexto grande que não cabe na vaga do Whisper.
+	echo "PC_IP="                             # IP do PC do dono, para pré-preencher o «Acesso remoto ao PC» na página mobile (ex.: «192.168.1.50»); vazio = o utilizador escreve-o.
 	echo "SWAP=1"                             # liga a memória de reserva RIG_HOME/swapfile, se existir
 	echo "WHISPER_GPU="                        # placa para a transcrição de voz (vazio = sem Whisper); precisa de ~1,2 GB livres nela
 	echo "WHISPER_PORT=8089"

@@ -3,7 +3,7 @@
   "short_name": "Meister Chat",
   "description": "Conversa com os modelos da rig.",
   "lang": "pt",
-  "start_url": "/chat",
+  "start_url": "/mobile",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",

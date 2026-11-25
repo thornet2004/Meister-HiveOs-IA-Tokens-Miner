@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prepara uma rig nova: motor llama.cpp (binários oficiais, CUDA 12.8), bibliotecas CUDA e as bibliotecas
-# de sistema do Ubuntu 24.04 de que ele precisa. Tudo fica em RIG_HOME; o HiveOS não é alterado.
+# de sistema do Ubuntu 24.04 de que ele precisa. Quase tudo fica em RIG_HOME; do sistema instala-se só o
+# tesseract/poppler (OCR e leitura de PDF da página mobile), via apt.
 set -e
 RIG_HOME=${RIG_HOME:-/home/user/meister-rig}
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -32,6 +33,13 @@ if [[ $INSTALAR_WHISPER == 1 && ! -d $RIG_HOME/whisper/site/faster_whisper ]]; t
 	R=https://huggingface.co/deepdml/faster-whisper-large-v3-turbo-ct2/resolve/4df90f75321148c3a29a9e2351b7ddf8f5b115a8
 	for f in config.json preprocessor_config.json tokenizer.json vocabulary.json model.bin; do wget -q -c -O "$M/$f" "$R/$f"; done
 	echo 'e76620f83d5f5b69efd3d87e3dc180c1bd21df9fbebacfd4335e5e1efcc018da  model.bin' | (cd "$M" && sha256sum -c)
+fi
+# OCR e leitura de PDF para a página mobile (/extrair): tesseract (pt+en) e poppler. Pacotes de sistema (apt).
+# Se falhar, não trava a instalação; a câmara/OCR e os PDFs da página ficam sem efeito até se instalarem à mão.
+if ! command -v tesseract > /dev/null || ! command -v pdftotext > /dev/null; then
+	SUDO=; [[ $EUID -ne 0 ]] && command -v sudo > /dev/null && SUDO=sudo
+	( $SUDO apt-get update -qq && $SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y tesseract-ocr tesseract-ocr-por poppler-utils ) \
+		|| echo "Aviso: não instalei o tesseract/poppler; o OCR e os PDFs da página mobile ficam sem efeito (apt-get install tesseract-ocr tesseract-ocr-por poppler-utils)."
 fi
 install -m 755 "$HERE/llama.sh" "$RIG_HOME/llama.sh"
 "$RIG_HOME/llama.sh" llama-server --list-devices

@@ -1,7 +1,7 @@
 // Meister Chat: guarda só a página e os ícones, para a app abrir depressa e mostrar-se mesmo sem rede.
 // Os pedidos aos modelos (/v1/...) e à voz nunca passam por aqui nem ficam guardados.
-const CACHE = 'meister-chat-1';
-const SHELL = ['/chat', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'meister-chat-5';
+const SHELL = ['/mobile', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 self.addEventListener('install', event => { event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));

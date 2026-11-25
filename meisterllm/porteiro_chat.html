@@ -17,8 +17,10 @@
 * { box-sizing:border-box; }
 html, body { height:100%; }
 body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 system-ui, "Segoe UI", sans-serif; display:flex; flex-direction:column; }
-header { display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); padding-top:max(10px, env(safe-area-inset-top)); }
-header strong { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+header { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:10px 12px; border-bottom:1px solid var(--line); padding-top:max(10px, env(safe-area-inset-top)); }
+header strong { flex:1 1 100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+header select { flex:1 1 0; max-width:none; min-width:0; }  /* cede o espaço aos botões: nunca os empurra para outra linha */
+header button { padding:6px 9px; font-size:14px; }           /* botões do cabeçalho compactos, para caberem todos na 2.ª linha */
 select, button, input, textarea { font:inherit; color:var(--text); background:#0e1116; border:1px solid var(--line); border-radius:8px; }
 select, button { padding:7px 10px; } button { background:#263041; cursor:pointer; } button.main { background:var(--accent); color:#06121d; border-color:var(--accent); font-weight:600; }
 select { max-width:46vw; }
@@ -29,12 +31,21 @@ select { max-width:46vw; }
 .msg pre { background:#0b0d11; border:1px solid var(--line); border-radius:8px; padding:9px; overflow-x:auto; white-space:pre; margin:6px 0; font:13px/1.45 Consolas, monospace; }
 .msg code { background:#0b0d11; border-radius:4px; padding:1px 4px; font:13px Consolas, monospace; } .msg pre code { background:none; padding:0; }
 .dim { color:var(--dim); } .small { font-size:13px; }
-form#send { display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--line); padding-bottom:max(10px, env(safe-area-inset-bottom)); }
+form#send { display:flex; gap:8px; align-items:flex-end; padding:10px 12px; border-top:1px solid var(--line); padding-bottom:max(10px, env(safe-area-inset-bottom)); }
+/* a caixa de texto cresce sozinha; os botões ficam do mesmo tamanho, sempre em baixo */
+#clip, #cam, #go { flex:none; width:42px; height:42px; min-height:42px; padding:0; font-size:20px; line-height:1; display:flex; align-items:center; justify-content:center; }
+#go { border-radius:50%; font-size:22px; }
 textarea { flex:1; resize:none; padding:9px 10px; max-height:38vh; }
 #login { margin:auto; width:min(420px, 92%); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; }
 #login input { width:100%; padding:10px; margin:10px 0; }
 #login-error { color:var(--bad); min-height:20px; font-size:14px; }
 .hidden { display:none !important; }
+.icon { background:#263041; }
+#attach { display:flex; align-items:center; gap:8px; padding:6px 12px; border-top:1px solid var(--line); color:var(--dim); font-size:14px; }
+#attach span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#attach .x { margin-left:auto; flex:none; padding:3px 9px; }
+.block { position:relative; }
+.block .dl { position:absolute; top:6px; right:6px; padding:2px 8px; font-size:12px; background:#1b2029; opacity:.85; }
 </style>
 </head>
 <body>
@@ -45,10 +56,19 @@ textarea { flex:1; resize:none; padding:9px 10px; max-height:38vh; }
   <div id="login-error"></div>
   <button id="install" class="hidden" style="width:100%;margin-top:6px">Instalar como app</button>
   <div id="install-hint" class="dim small hidden" style="margin-top:8px">Para instalar no iPhone: botão Partilhar do Safari → «Adicionar ao ecrã principal».</div>
+  <details id="remoto" style="margin-top:14px">
+    <summary class="dim small" style="cursor:pointer">Acesso remoto ao PC (pela VPN)</summary>
+    <div class="dim small" style="margin:8px 0 2px">Abre o controlo remoto da app no teu PC. Liga a VPN primeiro; depois mete lá o código que a app do PC mostra.</div>
+    <input id="pc-ip" inputmode="url" autocomplete="off" placeholder="IP do PC (ex.: 192.168.1.50)">
+    <button id="pc-abrir" class="main" style="width:100%">Abrir controlo remoto</button>
+  </details>
 </section>
-<header class="hidden"><strong>Meister Chat</strong><select id="model" title="Modelo"></select><button id="new" title="Conversa nova">Nova</button><button id="leave" title="Esquecer a chave neste aparelho">Sair</button></header>
+<header class="hidden"><strong>Meister Chat</strong><select id="model" title="Modelo"></select><button id="remoto-pc" title="Acesso remoto ao PC">🖥️</button><button id="new" title="Conversa nova">Nova</button><button id="leave" title="Esquecer a chave neste aparelho">Sair</button></header>
 <div id="log" class="hidden"></div>
-<form id="send" class="hidden"><textarea id="text" rows="1" placeholder="Escreve uma mensagem"></textarea><button id="go" class="main">Enviar</button></form>
+<div id="attach" class="hidden"></div>
+<form id="send" class="hidden"><button type="button" id="clip" class="icon" title="Anexar ficheiro">📎</button><button type="button" id="cam" class="icon" title="Tirar foto">📷</button><textarea id="text" rows="1" placeholder="Escreve uma mensagem"></textarea><button id="go" class="main" title="Enviar" aria-label="Enviar">↑</button></form>
+<input id="file" type="file" class="hidden" accept="image/*,application/pdf,text/*,.md,.py,.js,.ts,.json,.csv,.html,.css,.sh,.txt,.xml,.yaml,.yml">
+<input id="photo" type="file" class="hidden" accept="image/*" capture="environment">
 <script>
 const $ = id => document.getElementById(id);
 const store = { get: k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }, set: (k, v) => { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} } };
@@ -60,8 +80,13 @@ function rich(node, text) {  // texto com blocos de código e `código` — cons
   node.replaceChildren();
   text.split(/```/).forEach((part, index) => {
     if (index % 2) {
-      const code = document.createElement('code'); code.textContent = part.replace(/^[^\n]*\n/, '').replace(/\n$/, '');
-      const pre = document.createElement('pre'); pre.append(code); node.append(pre);
+      const lang = (part.match(/^[^\n]*/) || [''])[0].trim();
+      const body = part.replace(/^[^\n]*\n/, '').replace(/\n$/, '');
+      const code = document.createElement('code'); code.textContent = body;
+      const pre = document.createElement('pre'); pre.append(code);
+      const dl = document.createElement('button'); dl.type = 'button'; dl.className = 'dl'; dl.textContent = '⬇'; dl.title = 'Descarregar';
+      dl.onclick = () => download(body, lang);
+      const block = document.createElement('div'); block.className = 'block'; block.append(pre, dl); node.append(block);
     } else part.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*)/).forEach(piece => {
       if (/^`[^`\n]+`$/.test(piece)) { const code = document.createElement('code'); code.textContent = piece.slice(1, -1); node.append(code); }
       else if (/^\*\*[^*\n]+\*\*$/.test(piece)) { const bold = document.createElement('strong'); bold.textContent = piece.slice(2, -2); node.append(bold); }
@@ -96,7 +121,7 @@ async function enter() {
 async function ask(text) {
   history.push({ role: 'user', content: text }); bubble('user', text); keep();
   const node = bubble('bot', ''); node.textContent = '…';
-  running = new AbortController(); $('go').textContent = 'Parar';
+  running = new AbortController(); $('go').textContent = '■'; $('go').title = 'Parar';
   let reply = '';
   try {
     const answer = await fetch('/v1/chat/completions', { method: 'POST', signal: running.signal, headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
@@ -121,7 +146,7 @@ async function ask(text) {
   } catch (error) {
     if (error.name !== 'AbortError') bubble('note', error.message || String(error));
   } finally {
-    running = null; $('go').textContent = 'Enviar';
+    running = null; $('go').textContent = '↑'; $('go').title = 'Enviar';
     if (reply) { history.push({ role: 'assistant', content: reply }); keep(); } else { node.remove(); if (history.length && history[history.length - 1].role === 'user') { history.pop(); keep(); $('text').value = $('text').value || text; } }
   }
 }
@@ -130,13 +155,59 @@ $('login-form').onsubmit = async event => { event.preventDefault(); key = $('key
 $('send').onsubmit = event => {
   event.preventDefault();
   if (running) return running.abort();
-  const text = $('text').value.trim(); if (!text) return;
+  let text = $('text').value.trim();
+  if (attach) {
+    text = (text ? text + '\n\n' : '') + 'Ficheiro anexado «' + attach.nome + '»:\n"""\n' + attach.texto + '\n"""';
+    attach = null; drawAttach();
+  }
+  if (!text) return;
   $('text').value = ''; $('text').style.height = 'auto'; ask(text);
 };
+
+// Descarregar um bloco de código como ficheiro (adivinha a extensão pela linguagem do bloco).
+function download(text, lang) {
+  const ext = { python: 'py', py: 'py', javascript: 'js', js: 'js', typescript: 'ts', ts: 'ts', bash: 'sh', sh: 'sh', shell: 'sh', html: 'html', css: 'css', json: 'json', sql: 'sql', java: 'java', c: 'c', cpp: 'cpp', 'c++': 'cpp', go: 'go', rust: 'rs', rs: 'rs', yaml: 'yaml', yml: 'yml', md: 'md', xml: 'xml', php: 'php', ruby: 'rb', rb: 'rb' }[(lang || '').toLowerCase()] || 'txt';
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'meister.' + ext });
+  document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// Anexar ficheiro: texto lido no próprio telemóvel; imagem/PDF vão ao /extrair (OCR / texto do PDF) na rig.
+let attach = null;  // { nome, texto } a juntar à próxima mensagem
+function drawAttach() {
+  const bar = $('attach');
+  if (!attach) { bar.classList.add('hidden'); bar.replaceChildren(); return; }
+  bar.classList.remove('hidden'); bar.replaceChildren();
+  const label = document.createElement('span'); label.textContent = '📎 ' + attach.nome + ' — ' + attach.texto.length + ' caracteres';
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.textContent = 'Remover';
+  x.onclick = () => { attach = null; drawAttach(); };
+  bar.append(label, x);
+}
+async function grab(input) {
+  const file = input.files && input.files[0]; input.value = '';
+  if (!file) return;
+  const pdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const image = /^image\//.test(file.type) || /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(file.name);
+  try {
+    if (!pdf && !image) { attach = { nome: file.name, texto: await file.text() }; drawAttach(); $('text').focus(); return; }
+    const note = bubble('note', 'A extrair texto de ' + file.name + '…');
+    const answer = await fetch('/extrair?tipo=' + (pdf ? 'pdf' : 'imagem'), { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': file.type || 'application/octet-stream' }, body: file });
+    note.remove();
+    if (answer.status === 401) return leave('Chave errada ou cortada.');
+    if (!answer.ok) { let data = {}; try { data = await answer.json(); } catch (e) {} throw new Error((data.error && data.error.message) || 'Erro ' + answer.status); }
+    const texto = ((await answer.json()).texto || '').trim();
+    if (!texto) { bubble('note', 'Não encontrei texto nesse ficheiro.'); return; }
+    attach = { nome: file.name, texto }; drawAttach(); $('text').focus();
+  } catch (error) { bubble('note', error.message || String(error)); }
+}
+$('clip').onclick = () => $('file').click();
+$('cam').onclick = () => $('photo').click();
+$('file').onchange = () => grab($('file'));
+$('photo').onchange = () => grab($('photo'));
 $('text').oninput = () => { $('text').style.height = 'auto'; $('text').style.height = $('text').scrollHeight + 2 + 'px'; };
 $('text').onkeydown = event => { if (event.key === 'Enter' && !event.shiftKey && !('ontouchstart' in window)) { event.preventDefault(); $('send').requestSubmit(); } };
 $('model').onchange = () => store.set('modelo', $('model').value);
-$('new').onclick = () => { if (running) running.abort(); history = []; keep(); draw(); $('text').focus(); };
+$('new').onclick = () => { if (running) running.abort(); history = []; keep(); draw(); attach = null; drawAttach(); $('text').focus(); };
 $('leave').onclick = () => { if (running) running.abort(); history = []; keep(); leave(); };
 if (key) enter().catch(error => leave(error.message)); else $('key').focus();
 
@@ -148,6 +219,17 @@ window.addEventListener('beforeinstallprompt', event => { event.preventDefault()
 window.addEventListener('appinstalled', () => { offer = null; $('install').classList.add('hidden'); });
 $('install').onclick = async () => { if (!offer) return; offer.prompt(); await offer.userChoice; offer = null; $('install').classList.add('hidden'); };
 if (!installed && /iphone|ipad|ipod/i.test(navigator.userAgent)) $('install-hint').classList.remove('hidden');
+
+// Acesso remoto ao PC: salta para o controlo remoto da app no PC, onde se mete o código. IP fixo, guardado.
+function abrirRemoto(ip) {
+  ip = (ip || '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+  if (!ip) return;
+  store.set('pc_ip', ip);
+  location.href = 'http://' + (/:\d+$/.test(ip) ? ip : ip + ':8765');
+}
+$('pc-ip').value = store.get('pc_ip') || '__PC_IP__';
+$('pc-abrir').onclick = () => abrirRemoto($('pc-ip').value);
+$('remoto-pc').onclick = () => abrirRemoto(store.get('pc_ip') || '__PC_IP__');
 </script>
 </body>
 </html>

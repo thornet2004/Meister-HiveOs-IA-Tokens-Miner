@@ -145,7 +145,12 @@ gate() {
 	local old
 	for old in $(pgrep -f 'porteiro\.py'); do kill "$old" 2>/dev/null; done  # um só porteiro: tira algum arrancado à mão
 	[[ -s run/porteiro.log ]] && mv -f run/porteiro.log run/porteiro.anterior.log
-	RIG_HOME=$RIG_HOME GATE_PROXY=$GATE_PROXY GATE_FRIEND_PARALLEL=$GATE_FRIEND_PARALLEL python3 "$(pwd)/porteiro.py" "$GATE_PORT" "$HOST" "$(pwd)/run" > run/porteiro.log 2>&1 &
+	# As variáveis do modo troca (SLOTS, QUENTES, ...) vão sempre; vazias, o porteiro fica no modo antigo (lê run/servers).
+	RIG_HOME=$RIG_HOME GATE_PROXY=$GATE_PROXY GATE_FRIEND_PARALLEL=$GATE_FRIEND_PARALLEL \
+		SLOTS="$SLOTS" QUENTES="$QUENTES" VAGA_FIXA="$VAGA_FIXA" KEEPALIVE="$KEEPALIVE" MODEL_PORT="$PORT" PC_IP="$PC_IP" \
+		CTX="$CTX" PARALLEL="$PARALLEL" CACHE_RAM="$CACHE_RAM" CHECKPOINTS="$CHECKPOINTS" EXTRA="$EXTRA" \
+		LLAMA_SH="$RIG_HOME/llama.sh" \
+		python3 "$(pwd)/porteiro.py" "$GATE_PORT" "$HOST" "$(pwd)/run" > run/porteiro.log 2>&1 &
 	gpid=$!
 	sleep 1
 	if kill -0 "$gpid" 2>/dev/null; then say "Porteiro pronto na porta $GATE_PORT."
@@ -155,6 +160,31 @@ gate() {
 date +%s > run/started
 (umask 077; printf '%s' "$API_KEY" > run/key)  # para o h-stats.sh ler as métricas
 [[ ${FIREWALL:-1} == 1 ]] && say "$(./firewall.sh on 2>&1 | tail -1)"
+
+# MODO TROCA: com SLOTS definido, o porteiro passa a dono dos modelos (carrega/descarrega a pedido; só os carregados
+# pesam na VRAM). Aqui só se prepara o catálogo — os ficheiros já foram descarregados e conferidos acima — e arrancam
+# o porteiro e o Whisper; a vigia olha só por eles (os modelos são do porteiro).
+if [[ -n $SLOTS ]]; then
+	[[ -n $GATE_PORT ]] || fail "O modo troca precisa do porteiro (GATE_PORT): é por ele que a app escolhe o modelo."
+	: > run/catalogo
+	for j in "${!S_NAME[@]}"; do printf '%s|%s|%s|%s\n' "${S_NAME[$j]}" "${S_FILE[$j]}" "${S_CTX[$j]}" "${S_ARGS[$j]}" >> run/catalogo; done
+	rm -f run/servers  # o porteiro reescreve-o à medida que carrega/descarrega
+	say "Modo troca: ${#S_NAME[@]} modelo(s) no catálogo; vagas: $SLOTS; quentes: ${QUENTES:-nenhum}; descarrega parados há mais de ${KEEPALIVE:-600}s."
+	gate
+	whisper
+	while :; do
+		if ! kill -0 "$gpid" 2>/dev/null; then
+			gfalls=$((gfalls + 1))
+			if [[ $gfalls -le 5 ]]; then say "O porteiro caiu ($gfalls.ª vez). A repor."; gate
+			else say "O porteiro não se aguenta; saio para o Hive reiniciar tudo."; kill "$wpid" 2>/dev/null; exit 1; fi
+		fi
+		if [[ -n $WHISPER_GPU && -n $wpid ]] && ! kill -0 "$wpid" 2>/dev/null && [[ $wfalls -lt 5 ]]; then
+			wfalls=$((wfalls + 1)); say "Whisper caiu ($wfalls.ª vez). A repor."; whisper
+		fi
+		sleep 10 & wait $!
+	done
+fi
+
 gate
 for i in "${!S_GPUS[@]}"; do start "$i"; done
 whisper
